@@ -1,0 +1,16 @@
+-e git+https://github.com/michaelbrooks/django-twitter-stream.git#egg=django-twitter-stream
+
+Django==1.7.1
+Fabric==1.10.0
+MySQL-python==1.2.5
+path.py==7.0
+dj-database-url==0.3.0
+django-debug-toolbar==1.2.2
+
+numpy==1.9.1
+scipy==0.14.0
+
+gensim==0.10.2
+Pyro4==4.29
+
+nltk==3.0.0
