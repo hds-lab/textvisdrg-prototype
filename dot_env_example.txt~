@@ -1,2 +1,0 @@
-PORT=25424
-DATABASE_URL=mysql://textvis:textvis_prototype@localhost:3600/textvis_prototype
