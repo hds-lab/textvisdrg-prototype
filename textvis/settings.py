@@ -25,7 +25,7 @@ BASE_DIR = path(__file__).abspath().realpath().dirname().parent
 SECRET_KEY = 'l0c#)93_grr%==ul100dsh9xlw9fae#!vyimc(n(@spgyzvkuq'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 TEMPLATE_DEBUG = True
 

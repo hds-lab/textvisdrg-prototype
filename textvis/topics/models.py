@@ -6,6 +6,7 @@ from twitter_stream.fields import PositiveBigAutoForeignKey, PositiveBigIntegerF
 
 # import the logging library
 import logging
+import nltk
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ def stoplist():
         from nltk.corpus import stopwords
         _stoplist = stopwords.words('english')
     return _stoplist
+    
     
 class Dictionary(models.Model):
     name = models.CharField(max_length=100)
@@ -138,33 +140,40 @@ class Dictionary(models.Model):
     @classmethod
     def create_from_chats(cls, name="chat dictionary"):
         Message = django_apps.get_model('textprizm.Message')
-        queryset = Message.objects.filter(type=0)
+        queryset = Message.objects.filter(type=0).exclude(participant_id__gt=2)
         
         texts = DbTextIterator(queryset, textfield="message")
-        tokenized_texts = Tokenizer(texts, stoplist=stoplist())
+        tokenized_texts = WordTokenizer(texts, stoplist=stoplist())
         
         dictionary = cls._create_from_texts(tokenized_texts, name=name)
         dictionary._vectorize_corpus(queryset, tokenized_texts, TextPrizmWord, textfield='message')
-        
+
     def _vectorize_corpus(self, queryset, tokenizer, wv_class, textfield='text'):
-        
+
+        import math
+
         logger.info("Saving document word vectors in corpus.")
-        
+
+        total_documents = self.num_docs
         gdict = self.gensim_dictionary
         count = 0
         total_count = queryset.count()
         batch = []
         batch_size = 1000
         print_freq = 10000
-        
+
         for obj in queryset.iterator():
             text = getattr(obj, textfield)
             bow = gdict.doc2bow(tokenizer.tokenize(text))
             
             for word_index, word_freq in bow:
                 word_id = self.get_word_id(word_index)
+                document_freq = gdict.dfs[word_index]
+                tfidf = word_freq * math.log(total_documents, document_freq)
                 batch.append(wv_class.create(word_id=word_id,
-                                             weight=word_freq,
+                                             word_index=word_index,
+                                             count=word_freq,
+                                             tfidf=tfidf,
                                              source_obj=obj))
             count += 1
             
@@ -185,8 +194,68 @@ class Dictionary(models.Model):
             logger.info("Saved word-elements for %d / %d documents" % (count, total_count))
         
         logger.info("Created %d word vector entries" % count)
-        
+
+
+    def vectorize_chats(self):
+        Message = django_apps.get_model('textprizm.Message')
+        queryset = Message.objects.filter(type=0)
+
+        texts = DbTextIterator(queryset, textfield="message")
+        tokenized_texts = Tokenizer(texts, stoplist=stoplist())
+
+        self._vectorize_corpus(queryset, tokenized_texts, TextPrizmWord, textfield='message')
+
+    def vectorize_tweets(self):
+        Tweet = django_apps.get_model(settings.TWITTER_STREAM_TWEET_MODEL)
+        queryset = Tweet.objects.all()
+
+        texts = DbTextIterator(queryset, textfield="text")
+        tokenized_texts = Tokenizer(texts, stoplist=stoplist())
+
+        self._vectorize_corpus(queryset, tokenized_texts, TweetWord, textfield='text')
+
+    def _build_lda(self, name, corpus, num_topics=30):
+        from gensim.models import LdaMulticore
+
+        gdict = self.gensim_dictionary
+
+        lda = LdaMulticore(corpus=corpus,
+                           num_topics=num_topics,
+                           workers=3,
+                           id2word=gdict)
+
+        model = TopicModel(name=name, dictionary=self)
+        model.save()
+
+        topics = lda.show_topics(num_topics=num_topics, num_words=200, formatted=False)
+        for i in range(num_topics):
+            topic = lda.show_topic(i, topn=200)
+            alpha = lda.alpha[i]
+
+            topicm = Topic(model=model, name="?", alpha=alpha)
+            topicm.save()
+
+            words = []
+            for prob, word_text in topic:
+                word_index = gdict.token2id[word_text]
+                word_id = self.get_word_id(word_index)
+                tw = TopicWord(topic=topicm,
+                               word_id=word_id, word_index=word_index,
+                               probability=prob)
+                words.append(tw)
+            TopicWord.objects.bulk_create(words)
             
+        lda.save("lda_out.model")
+
+        
+    def build_chat_lda(self, name="chats", num_topics=30):
+        Message = django_apps.get_model('textprizm.Message')
+        queryset = Message.objects.filter(type=0)
+
+        corpus = DbWordVectorIterator(self, TextPrizmWord)
+        self._build_lda(name, corpus)
+        
+        
 class Word(models.Model):
     dictionary = models.ForeignKey(Dictionary, related_name='words')
     index = models.IntegerField()
@@ -200,10 +269,12 @@ class TopicModel(models.Model):
     description = models.CharField(max_length=200)
     time = models.DateTimeField(auto_now_add=True)
 
+
 class Topic(models.Model):
     model = models.ForeignKey(TopicModel)
     name = models.CharField(max_length=100)
     description = models.CharField(max_length=200)
+    alpha = models.FloatField()
 
 
 class AbstractWordVector(models.Model):
@@ -211,27 +282,30 @@ class AbstractWordVector(models.Model):
         abstract = True
         
     word = models.ForeignKey(Word)
-    weight = models.FloatField()
+    word_index = models.IntegerField()
+    count = models.FloatField()
+    tfidf = models.FloatField()
     
     @classmethod
-    def create(cls, word_id, source_obj, weight):
-        wv = cls(word_id=word_id, weight=weight)
-        setattr(wv, cls.source_field, source_obj)
-        return wv
-            
+    def create(cls, word_id, word_index, source_obj, count, tfidf):
+        return cls(word_id=word_id, word_index=word_index,
+                   count=count, tfidf=tfidf,
+                   source=source_obj)
+
     
-class TopicWord(AbstractWordVector):
+class TopicWord(models.Model):
+    word = models.ForeignKey(Word)
+    word_index = models.IntegerField()
+    probability = models.FloatField()
     topic = models.ForeignKey(Topic)
-    source_field = 'topic'
     
 class TextPrizmWord(AbstractWordVector):
-    message = models.ForeignKey('textprizm.Message')
-    source_field = 'message'
+    source = models.ForeignKey('textprizm.Message')
     
 class TweetWord(AbstractWordVector):
-    tweet = PositiveBigAutoForeignKey(settings.TWITTER_STREAM_TWEET_MODEL)
-    source_field = 'tweet'
-    
+    source = PositiveBigAutoForeignKey(settings.TWITTER_STREAM_TWEET_MODEL)
+
+
 class DbTextIterator(object):
     def __init__(self, queryset, textfield='text'):
         self.queryset = queryset
@@ -250,6 +324,45 @@ class DbTextIterator(object):
             yield getattr(obj, self.textfield)
 
 
+class DbWordVectorIterator(object):
+    def __init__(self, dictionary, wv_class, freq_field='tfidf'):
+        self.dictionary = dictionary
+        self.wv_class = wv_class
+        self.freq_field = freq_field
+
+    def __iter__(self):
+        qset = self.wv_class.objects.order_by('source')
+        current_position = 0
+
+        current_source = None
+        current_vector = []
+        for wv in qset.iterator():
+            source_id = wv.source_id
+            word_idx = wv.word_index
+            freq = getattr(wv, self.freq_field)
+
+            if current_source is None:
+                current_source = source_id
+                current_vector = []
+
+            if current_source != source_id:
+                yield current_vector
+                current_vector = []
+                current_source = source_id
+                current_position += 1
+                
+                if current_position % 10000 == 0:
+                    logger.info("Iterating through database word-vectors: item %d" % current_position)
+
+            current_vector.append((word_idx, freq))
+
+        # one more extra one
+        yield current_vector
+
+    def __len__(self):
+        return self.dictionary.num_docs
+    
+        
 class Tokenizer(object):
     def __init__(self, texts=None, stoplist=None):
         self.texts = texts
@@ -268,6 +381,16 @@ class Tokenizer(object):
     def tokenize(self, text):
         words = []
         for word in text.lower().split():
+            if word not in self.stoplist:
+                if len(word) >= self.max_length:
+                    word = word[:self.max_length-1]
+                words.append(word)
+        return words
+        
+class WordTokenizer(Tokenizer):
+    def tokenize(self, text):
+        words = []
+        for word in nltk.word_tokenize(text.lower()):
             if word not in self.stoplist:
                 if len(word) >= self.max_length:
                     word = word[:self.max_length-1]
