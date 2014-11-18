@@ -73,7 +73,11 @@ class DbWordVectorIterator(object):
         yield current_vector
 
     def __len__(self):
-        return self.dictionary.num_docs
+        from django.db.models import Count
+        count = self.wv_class.objects.filter(dictionary=self.dictionary).aggregate(Count('source', distinct=True))
+        if count:
+            return count['source__count']
+
 
 
 class Tokenizer(object):
@@ -140,6 +144,10 @@ class TaskContext(object):
                                              tokenizer=self.tokenizer.__name__,
                                              dataset=self.queryset_str(),
                                              stoplist=self.stoplist is not None)
+
+    def bows_exist(self, dictionary):
+        return self.word_vector_class.objects.filter(dictionary=dictionary).exists()
+
 
     def build_bows(self, dictionary):
 

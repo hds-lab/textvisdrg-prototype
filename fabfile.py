@@ -103,21 +103,25 @@ def backup(*args):
     with hide('status'):
         local(command)
 
+def _data_pipeline(context):
+    dictionary = context.find_dictionary()
+    if dictionary is None:
+        dictionary = context.build_dictionary()
+
+    if not context.bows_exist(dictionary):
+        context.build_bows(dictionary)
+
+    context.build_lda(dictionary)
+
 def chat_pipeline(name="chat data, no bert, no punctuation"):
     import logging
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
     _setup_django()
+
     from textvis.topics.tasks import get_chat_context
-
     context = get_chat_context(name)
-
-    dictionary = context.find_dictionary()
-    if dictionary is None:
-        dictionary = context.build_dictionary()
-
-    context.build_bows(dictionary)
-    context.build_lda(dictionary)
+    _data_pipeline(context)
 
 def tweet_pipeline(name="tweet data, no punctuation"):
     import logging
@@ -126,8 +130,5 @@ def tweet_pipeline(name="tweet data, no punctuation"):
     _setup_django()
 
     from textvis.topics.tasks import get_twitter_context
-
     context = get_twitter_context(name)
-    dictionary = context.build_dictionary()
-    context.build_bows(dictionary)
-    context.build_lda(dictionary)
+    _data_pipeline(context)
