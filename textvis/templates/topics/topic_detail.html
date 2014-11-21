@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block javascript %}
+    {{ block.super }}
+    <script src="{% static 'js/shade_words.js' %}"></script>
+{% endblock %}
+
+{% block css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/topic_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+    <ol class="breadcrumb">
+        <li><a href="{% url 'topics_models' %}">Models</a></li>
+        <li><a href="{% url 'topics_model' model_id=topic_model.id %}">Topics</a></li>
+        <li class="active">Details</li>
+    </ol>
+
+    <h1>Topic {{ topic.id }}</h1>
+    <p class="lead">in model <em>{{ topic_model.name }}</em></p>
+
+    <h2>Words {% if word %}<a href="{% url 'topics_topic' model_id=topic_model.id topic_id=topic.id %}" class="btn btn-default">Select None</a>{% endif %}</h2>
+    <div class="word-list">
+        {% for w in topic_words %}
+            <a class="word {% if word and word.id == w.id %}active{% endif %}"
+               data-probability="{{ w.probability }}"
+                    {% if not word or word.id != w.id %}
+               href="{% url 'topics_topic_word' model_id=topic_model.id topic_id=topic.id word_id=w.id %}"
+                    {% endif %}>
+                {{ w.word.text }}
+            </a>
+        {% endfor %}
+    </div>
+
+    <h2>Examples
+    {% if word %}containing <strong>"{{ word.word.text }}"</strong>{% endif %}
+    </h2>
+
+    <div class="examples">
+
+    </div>
+
+
+{% endblock %}

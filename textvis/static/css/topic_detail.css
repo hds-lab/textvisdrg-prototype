@@ -1,0 +1,18 @@
+.word-list {
+
+}
+
+.word-list .word {
+    margin: 4px;
+    padding: 3px 6px;
+    border: 2px solid white;
+}
+
+.word-list .word.active {
+    border: 2px solid #009f84;
+    font-weight: bold;
+}
+
+.word-list .word:hover {
+    border: 2px solid #009f84;
+}

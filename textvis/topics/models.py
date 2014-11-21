@@ -204,7 +204,7 @@ class Dictionary(models.Model):
                 words.append(tw)
             TopicWord.objects.bulk_create(words)
             
-        lda.save("lda_out.model")
+        lda.save("lda_out_%d.model" % model.id)
         
         
 class Word(models.Model):
@@ -222,7 +222,7 @@ class TopicModel(models.Model):
 
 
 class Topic(models.Model):
-    model = models.ForeignKey(TopicModel)
+    model = models.ForeignKey(TopicModel, related_name='topics')
     name = models.CharField(max_length=100)
     description = models.CharField(max_length=200)
     alpha = models.FloatField()
@@ -251,7 +251,7 @@ class TopicWord(models.Model):
     word = models.ForeignKey(Word)
     word_index = models.IntegerField()
     probability = models.FloatField()
-    topic = models.ForeignKey(Topic)
+    topic = models.ForeignKey(Topic, related_name='words')
     
 class TextPrizmWord(AbstractWordVector):
     source = models.ForeignKey('textprizm.Message')

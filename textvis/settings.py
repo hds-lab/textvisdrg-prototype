@@ -25,11 +25,11 @@ BASE_DIR = path(__file__).abspath().realpath().dirname().parent
 SECRET_KEY = 'l0c#)93_grr%==ul100dsh9xlw9fae#!vyimc(n(@spgyzvkuq'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = environ.get('DEBUG', 'False') in ('True', '1')
 
-TEMPLATE_DEBUG = True
+TEMPLATE_DEBUG = DEBUG
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1']
 
 SITE_ID = 1
 
@@ -101,5 +101,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
 STATIC_URL = '/static/'
+
+STATICFILES_DIRS = (
+    BASE_DIR / 'textvis' / 'static',
+)
+
+TEMPLATE_DIRS = (
+    BASE_DIR / 'textvis' / 'templates',
+)
 
 TWITTER_STREAM_TWEET_MODEL = 'twitter_stream.Tweet'

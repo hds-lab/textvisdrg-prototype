@@ -28,7 +28,7 @@ def _stderr(msg):
     print(msg, file=sys.stderr)
     
 _django_set_up = False
-def _setup_django():
+def _setup_django(debug=None):
     global _django_set_up
     
     if not _django_set_up:
@@ -37,7 +37,10 @@ def _setup_django():
         
         from textvis import env_file
         env_file.load()
-        
+
+        if debug is not None:
+            os.environ.setdefault("DEBUG", str(debug))
+
         import django
         django.setup()
         
@@ -103,7 +106,7 @@ def backup(*args):
     with hide('status'):
         local(command)
 
-def _data_pipeline(context):
+def _data_pipeline(context, num_topics):
     dictionary = context.find_dictionary()
     if dictionary is None:
         dictionary = context.build_dictionary()
@@ -111,24 +114,24 @@ def _data_pipeline(context):
     if not context.bows_exist(dictionary):
         context.build_bows(dictionary)
 
-    context.build_lda(dictionary)
+    context.build_lda(dictionary, num_topics=num_topics)
 
-def chat_pipeline(name="chat data, no bert, no punctuation"):
+def chat_pipeline(name="chat data, no bert, no punctuation", num_topics=30):
     import logging
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-    _setup_django()
+    _setup_django(debug=False)
 
     from textvis.topics.tasks import get_chat_context
     context = get_chat_context(name)
-    _data_pipeline(context)
+    _data_pipeline(context, num_topics=int(num_topics))
 
-def tweet_pipeline(name="tweet data, no punctuation"):
+def tweet_pipeline(name="tweet data, no punctuation", num_topics=30):
     import logging
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-    _setup_django()
+    _setup_django(debug=False)
 
     from textvis.topics.tasks import get_twitter_context
     context = get_twitter_context(name)
-    _data_pipeline(context)
+    _data_pipeline(context, num_topics=int(num_topics))

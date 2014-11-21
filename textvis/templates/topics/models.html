@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+
+    <ol class="breadcrumb">
+        <li class="active">Models</li>
+    </ol>
+
+    <h1>Topic Models</h1>
+
+    <table class="table">
+        <thead>
+        <tr>
+            <th></th>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Time</th>
+            <th>Topics</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for obj in topic_models %}
+            <tr>
+                <td><a href="{% url 'topics_model' model_id=obj.id %}" class="btn btn-sm btn-default">Inspect</a></td>
+                <td>{{ obj.id }}</td>
+                <td>{{ obj.name }}</td>
+                <td>{{ obj.time }}</td>
+                <td>{{ obj.topics.count }}</td>
+            </tr>
+        {% endfor %}
+
+        </tbody>
+    </table>
+{% endblock %}

@@ -159,9 +159,9 @@ class TaskContext(object):
                                      wv_class=self.word_vector_class,
                                      textfield=self.textfield)
 
-    def build_lda(self, dictionary):
+    def build_lda(self, dictionary, num_topics=30):
         corpus = DbWordVectorIterator(dictionary, self.word_vector_class)
-        dictionary._build_lda(self.name, corpus)
+        dictionary._build_lda(self.name, corpus, num_topics=num_topics)
 
 
 
