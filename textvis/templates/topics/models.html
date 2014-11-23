@@ -13,8 +13,10 @@
             <th></th>
             <th>ID</th>
             <th>Name</th>
+            <th>Dictionary</th>
             <th>Time</th>
             <th>Topics</th>
+            <th title="per-word likelihood bound">-Log(Perplexity)</th>
         </tr>
         </thead>
         <tbody>
@@ -23,8 +25,10 @@
                 <td><a href="{% url 'topics_model' model_id=obj.id %}" class="btn btn-sm btn-default">Inspect</a></td>
                 <td>{{ obj.id }}</td>
                 <td>{{ obj.name }}</td>
+                <td>{{ obj.dictionary.words.count }} words from {{ obj.dictionary.num_docs }} {{ obj.dictionary.dataset }}s</td>
                 <td>{{ obj.time }}</td>
                 <td>{{ obj.topics.count }}</td>
+                <td>{{ obj.perplexity|floatformat:3 }}</td>
             </tr>
         {% endfor %}
 

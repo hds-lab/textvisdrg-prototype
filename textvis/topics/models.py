@@ -263,6 +263,16 @@ class Dictionary(models.Model):
             topicvector_class.objects.bulk_create(batch)
             logger.info("Saved topic-vectors for %d / %d documents" % (count, total_documents))
 
+    def _evaluate_lda(self, model, corpus, lda=None):
+
+        if lda is None:
+            # recover the lda
+            lda = model.load_from_file()
+
+        logger.info("Calculating model perplexity on entire corpus...")
+        model.perplexity = lda.log_perplexity(corpus)
+        logger.info("Perplexity: %f" % model.perplexity)
+        model.save()
 
 class Word(models.Model):
     dictionary = models.ForeignKey(Dictionary, related_name='words')
@@ -276,6 +286,7 @@ class TopicModel(models.Model):
     name = models.CharField(max_length=100)
     description = models.CharField(max_length=200)
     time = models.DateTimeField(auto_now_add=True)
+    perplexity = models.FloatField(default=0)
 
     def load_from_file(self):
         from gensim.models import LdaMulticore

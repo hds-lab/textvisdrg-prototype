@@ -26,7 +26,7 @@
         <tr>
             {% for topic in topic_model.topics.all %}
                 <th>
-                    <h3>Topic <span>{{ topic.id }}</span></h3>
+                    <h3>Topic <span>{{ topic.index }}</span></h3>
                     <a href="{% url 'topics_topic' model_id=topic_model.id topic_id=topic.id %}"
                        class="btn btn-sm btn-default">Examples</a>
                 </th>

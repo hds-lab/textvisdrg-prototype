@@ -137,7 +137,7 @@ class TaskContext(object):
         )
 
         import json
-        settings = json.dumps(settings, sort_keys=True)
+        return json.dumps(settings, sort_keys=True)
 
 
     def find_dictionary(self):
@@ -180,6 +180,9 @@ class TaskContext(object):
         corpus = DbWordVectorIterator(dictionary, self.word_vector_class)
         return dictionary._apply_lda(model, corpus, topicvector_class=self.topic_vector_class, lda=lda)
 
+    def evaluate_lda(self, dictionary, model, lda=None):
+        corpus = DbWordVectorIterator(dictionary, self.word_vector_class)
+        return dictionary._evaluate_lda(model, corpus, lda=lda)
 
 def get_chat_context(name):
 

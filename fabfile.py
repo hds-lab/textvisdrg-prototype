@@ -116,6 +116,7 @@ def _data_pipeline(context, num_topics):
 
     model, lda = context.build_lda(dictionary, num_topics=num_topics)
     context.apply_lda(dictionary, model, lda)
+    context.evaluate_lda(dictionary, model, lda)
 
 def chat_pipeline(name="chat data, no bert, no punctuation", num_topics=30):
     import logging
