@@ -127,7 +127,7 @@ class TaskContext(object):
     def queryset_str(self):
         return str(self.queryset.query)
 
-    def find_dictionary(self):
+    def get_dict_settings(self):
         settings = dict(
             name=self.name,
             tokenizer=self.tokenizer.__name__,
@@ -138,8 +138,11 @@ class TaskContext(object):
 
         import json
         settings = json.dumps(settings, sort_keys=True)
-        results = Dictionary.objects.filter(settings=settings)
 
+
+    def find_dictionary(self):
+
+        results = Dictionary.objects.filter(settings=self.get_dict_settings())
         return results.last()
 
 
@@ -151,10 +154,9 @@ class TaskContext(object):
 
         return Dictionary._create_from_texts(tokenized_texts=tokenized_texts,
                                              name=self.name,
-                                             tokenizer=self.tokenizer.__name__,
-                                             dataset=self.queryset_str(),
-                                             stoplist=self.stoplist is not None,
-                                             minimum_frequency=self.minimum_frequency)
+                                             minimum_frequency=self.minimum_frequency,
+                                             dataset=self.queryset.model.__name__,
+                                             settings=self.get_dict_settings())
 
     def bows_exist(self, dictionary):
         return self.word_vector_class.objects.filter(dictionary=dictionary).exists()

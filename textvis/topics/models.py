@@ -13,10 +13,9 @@ logger = logging.getLogger(__name__)
 
 class Dictionary(models.Model):
     name = models.CharField(max_length=100)
-    dataset = models.CharField(max_length=450)
-    stoplist = models.CharField(max_length=100)
-    tokenizer = models.CharField(max_length=100)
+    dataset = models.CharField(max_length=100)
     settings = models.TextField()
+
     time = models.DateTimeField(auto_now_add=True)
 
     num_docs = PositiveBigIntegerField(default=0)
@@ -104,7 +103,7 @@ class Dictionary(models.Model):
         return self
 
     @classmethod
-    def _create_from_texts(cls, tokenized_texts, name, dataset, stoplist, tokenizer, minimum_frequency=2):
+    def _create_from_texts(cls, tokenized_texts, name, dataset, settings, minimum_frequency=2):
         from gensim.corpora import Dictionary as GensimDictionary
 
         # build a dictionary
@@ -119,8 +118,7 @@ class Dictionary(models.Model):
 
         dict_model = cls(name=name,
                          dataset=dataset,
-                         stoplist=stoplist,
-                         tokenizer=tokenizer)
+                         settings=settings)
         dict_model.save()
 
         dict_model._populate_from_gensim_dictionary(dictionary)
