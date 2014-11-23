@@ -114,7 +114,8 @@ def _data_pipeline(context, num_topics):
     if not context.bows_exist(dictionary):
         context.build_bows(dictionary)
 
-    context.build_lda(dictionary, num_topics=num_topics)
+    model, lda = context.build_lda(dictionary, num_topics=num_topics)
+    context.apply_lda(dictionary, model, lda)
 
 def chat_pipeline(name="chat data, no bert, no punctuation", num_topics=30):
     import logging
@@ -128,7 +129,7 @@ def chat_pipeline(name="chat data, no bert, no punctuation", num_topics=30):
 
 def tweet_pipeline(name="tweet data, no punctuation", num_topics=30):
     import logging
-    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO, )
 
     _setup_django(debug=False)
 

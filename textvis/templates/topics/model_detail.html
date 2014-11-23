@@ -37,11 +37,11 @@
         {% for row in word_rows %}
             <tr>
                 {% for word in row %}
-                    <td title="Prob: {{ word.probability|floatformat:5 }}">
+                    <td title="Prob: {{ word.probability|floatformat:5 }}, Freq: {{word.word.document_frequency}}">
                         <a class="word"
                            data-probability="{{ word.probability }}"
                            href="{% url 'topics_topic_word' model_id=topic_model.id topic_id=word.topic_id word_id=word.id %}">
-                            {{ word.word.text }} {{word.word.document_frequency}}
+                            {{ word.word.text }}
                         </a>
                     </td>
                 {% endfor %}

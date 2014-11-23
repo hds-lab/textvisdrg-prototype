@@ -57,9 +57,30 @@ class TopicDetailView(DetailView):
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
         context = super(TopicDetailView, self).get_context_data(**kwargs)
-        context['topic_model'] = self.object.model
-        context['topic_words'] = self.object.words.prefetch_related('word')
+        TopicDetailView.get_topic_data(context, topic=self.object)
         return context
+
+    @classmethod
+    def get_topic_data(cls, context, topic, word=None):
+        topic_model = topic.model
+        context['topic'] = topic
+        context['word'] = word
+        context['topic_model'] = topic_model
+        context['topic_words'] = topic.words.prefetch_related('word')
+
+        #Dumb
+        if 'tweet' in topic_model.dictionary.dataset.lower():
+            topicvector_class = models.TweetTopic
+        else:
+            topicvector_class = models.TextPrizmTopic
+
+        examples = topicvector_class.get_examples(topic=topic)
+        if word:
+            examples = examples.filter(source__words__word=word)
+
+        context['examples'] = examples[:20].prefetch_related('source')
+
+
 
 
 class TopicWordDetailView(DetailView):
@@ -71,8 +92,6 @@ class TopicWordDetailView(DetailView):
     def get_context_data(self, **kwargs):
         # Call the base implementation first to get a context
         context = super(TopicWordDetailView, self).get_context_data(**kwargs)
-        topic = self.object.topic
-        context['topic'] = topic
-        context['topic_model'] = topic.model
-        context['topic_words'] = topic.words.prefetch_related('word')
+        topicword = self.object
+        TopicDetailView.get_topic_data(context, topic=self.object.topic, word=topicword.word)
         return context

@@ -43,16 +43,16 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-    
+
     'debug_toolbar',
-    
+
     'django.contrib.humanize',
     'bootstrap3',
     'jsonview',
     'twitter_stream',
-    
+
     'textvis.textprizm',
-    
+
     'textvis.topics',
 )
 
@@ -111,3 +111,32 @@ TEMPLATE_DIRS = (
 )
 
 TWITTER_STREAM_TWEET_MODEL = 'twitter_stream.Tweet'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s : %(levelname)s : %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': True,
+        },
+        'django.db': {
+            'handlers': ['console'],
+            'level': 'WARN',
+            'propagate': True,
+        }
+    },
+}

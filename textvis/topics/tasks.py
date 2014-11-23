@@ -1,5 +1,5 @@
 from django.conf import settings
-from models import Dictionary, TextPrizmWord, TweetWord, Word
+from models import Dictionary, TextPrizmWord, TweetWord, Word, TweetTopic, TextPrizmTopic
 from django.apps import apps as django_apps
 
 import nltk
@@ -42,35 +42,36 @@ class DbWordVectorIterator(object):
         self.dictionary = dictionary
         self.wv_class = wv_class
         self.freq_field = freq_field
+        self.current_source_id = None
+        self.current_vector = None
 
     def __iter__(self):
         qset = self.wv_class.objects.filter(dictionary=self.dictionary).order_by('source')
+        self.current_source_id = None
+        self.current_vector = []
         current_position = 0
-
-        current_source = None
-        current_vector = []
         for wv in qset.iterator():
             source_id = wv.source_id
             word_idx = wv.word_index
             freq = getattr(wv, self.freq_field)
 
-            if current_source is None:
-                current_source = source_id
-                current_vector = []
+            if self.current_source_id is None:
+                self.current_source_id = source_id
+                self.current_vector = []
 
-            if current_source != source_id:
-                yield current_vector
-                current_vector = []
-                current_source = source_id
+            if self.current_source_id != source_id:
+                yield self.current_vector
+                self.current_vector = []
+                self.current_source_id = source_id
                 current_position += 1
 
                 if current_position % 10000 == 0:
                     logger.info("Iterating through database word-vectors: item %d" % current_position)
 
-            current_vector.append((word_idx, freq))
+            self.current_vector.append((word_idx, freq))
 
         # one more extra one
-        yield current_vector
+        yield self.current_vector
 
     def __len__(self):
         from django.db.models import Count
@@ -113,22 +114,31 @@ class WordTokenizer(Tokenizer):
 
 class TaskContext(object):
 
-    def __init__(self, name, queryset, textfield, word_vector_class, tokenizer, stoplist=None):
+    def __init__(self, name, queryset, textfield, word_vector_class, topic_vector_class, tokenizer, minimum_frequency=2, stoplist=None):
         self.name = name
         self.queryset = queryset
         self.textfield = textfield
         self.word_vector_class = word_vector_class
+        self.topic_vector_class = topic_vector_class
         self.tokenizer = tokenizer
         self.stoplist = stoplist
+        self.minimum_frequency=minimum_frequency
 
     def queryset_str(self):
         return str(self.queryset.query)
 
     def find_dictionary(self):
-        results = Dictionary.objects.filter(name=self.name,
-                                            tokenizer=self.tokenizer.__name__,
-                                            dataset=self.queryset_str(),
-                                            stoplist=self.stoplist is not None)
+        settings = dict(
+            name=self.name,
+            tokenizer=self.tokenizer.__name__,
+            dataset=self.queryset_str(),
+            stoplist=self.stoplist is not None,
+            minimum_frequency=self.minimum_frequency
+        )
+
+        import json
+        settings = json.dumps(settings, sort_keys=True)
+        results = Dictionary.objects.filter(settings=settings)
 
         return results.last()
 
@@ -143,7 +153,8 @@ class TaskContext(object):
                                              name=self.name,
                                              tokenizer=self.tokenizer.__name__,
                                              dataset=self.queryset_str(),
-                                             stoplist=self.stoplist is not None)
+                                             stoplist=self.stoplist is not None,
+                                             minimum_frequency=self.minimum_frequency)
 
     def bows_exist(self, dictionary):
         return self.word_vector_class.objects.filter(dictionary=dictionary).exists()
@@ -161,8 +172,11 @@ class TaskContext(object):
 
     def build_lda(self, dictionary, num_topics=30):
         corpus = DbWordVectorIterator(dictionary, self.word_vector_class)
-        dictionary._build_lda(self.name, corpus, num_topics=num_topics)
+        return dictionary._build_lda(self.name, corpus, num_topics=num_topics)
 
+    def apply_lda(self, dictionary, model, lda=None):
+        corpus = DbWordVectorIterator(dictionary, self.word_vector_class)
+        return dictionary._apply_lda(model, corpus, topicvector_class=self.topic_vector_class, lda=lda)
 
 
 def get_chat_context(name):
@@ -174,8 +188,10 @@ def get_chat_context(name):
     return TaskContext(name=name, queryset=queryset,
                        textfield=textfield,
                        word_vector_class=TextPrizmWord,
+                       topic_vector_class=TextPrizmTopic,
                        tokenizer=WordTokenizer,
-                       stoplist=get_stoplist())
+                       stoplist=get_stoplist(),
+                       minimum_frequency=4)
 
 
 def get_twitter_context(name):
@@ -187,6 +203,8 @@ def get_twitter_context(name):
     return TaskContext(name=name, queryset=queryset,
                        textfield=textfield,
                        word_vector_class=TweetWord,
+                       topic_vector_class=TweetTopic,
                        tokenizer=WordTokenizer,
-                       stoplist=get_stoplist())
+                       stoplist=get_stoplist(),
+                       minimum_frequency=4)
 

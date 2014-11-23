@@ -79,6 +79,17 @@ class Message(models.Model):
 
         return cls.objects.filter(after_first, before_last)
 
+    @property
+    def text(self):
+        return self.message
+
+    @property
+    def user_name(self):
+        return self.participant.name
+
+    @property
+    def created_at(self):
+        return self.time
 
 class User(models.Model):
     
